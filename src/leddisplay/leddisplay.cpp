@@ -1,10 +1,7 @@
 #include "leddisplay.h"
 #include "motif.h"
 
-#include <LedMatrix.h>
-#include <SPI.h>
-
-#define FRAME_TIMEOUT 80
+#include "MaxMatrix.h"
 
 /* local types & variables */
 enum MatrixStates
@@ -12,20 +9,21 @@ enum MatrixStates
     STANDBY = 0,
     CLEAR,
     MOTIF,
-    TEXT
+    DAY_COUNT
 };
 
 typedef struct leddisplay
 {
-    uint8_t cs_pin;
-    LedMatrix *matrix;
+    MaxMatrix *matrix;
     MatrixStates state = STANDBY;
 
     Motif motif;
     uint8_t frame_id = 0;
     uint32_t frame_time = 0;
-
+    uint16_t frame_timeout = 500;
     bool loop = false;
+
+    uint16_t day_count;
 } leddisplay_t;
 
 leddisplay_t *leddisplay;
@@ -37,27 +35,48 @@ void leddisplay_draw_motif(const frame_t motif_frames[], const uint8_t nb_frames
 void leddisplay_init(uint8_t cs_pin)
 {
     leddisplay = new leddisplay_t;
-    leddisplay->cs_pin = cs_pin;
-    leddisplay->matrix = new LedMatrix(1, cs_pin);
+    leddisplay->matrix = new MaxMatrix(cs_pin);
     leddisplay->matrix->init();
+    leddisplay->matrix->setModuleOrientation(MAXMATRIX_MODULE_ORIENTATION_270);
+    leddisplay->matrix->setIntensity(1);
 }
 
 void leddisplay_set_motif(Motif motif, bool loop)
 {
+    leddisplay->frame_timeout = 80;
     leddisplay->state = MOTIF;
     leddisplay->loop = loop;
+    leddisplay->frame_id = 0;
     leddisplay->motif = motif;
 }
 
-void leddisplay_set_text(String text, bool loop)
+void leddisplay_set_day_count(uint32_t day_count, uint8_t nb_digit, bool sign, bool loop)
 {
-    leddisplay->state = TEXT;
+    uint8_t length = nb_digit + 3;
+    char* message = new char[length];
+
+    if (sign == true)
+    {
+        strcpy(message, "J+");
+    }
+    else
+    {
+        strcpy(message, "J-");   
+    }
+    
+    strcat(message, String(day_count).c_str());
+    message[length] = 0;
+
+    leddisplay->frame_timeout = 80;
+    leddisplay->state = DAY_COUNT;
     leddisplay->loop = loop;
-    leddisplay->matrix->setText(text);
+
+    leddisplay->matrix->setTextWithShift(message);   
 }
 
 void leddisplay_clear()
 {
+    leddisplay->frame_timeout = 80;
     leddisplay->state = CLEAR;   
 }
 
@@ -65,13 +84,12 @@ void leddisplay_process()
 {
     uint32_t current_time = millis();
 
-    if (current_time - leddisplay->frame_time > FRAME_TIMEOUT && leddisplay->state != STANDBY)
+    if (current_time - leddisplay->frame_time > leddisplay->frame_timeout && leddisplay->state != STANDBY)
     {
         switch (leddisplay->state)
         {
             case CLEAR:
                 leddisplay->matrix->clear();
-                leddisplay->matrix->commit();
                 leddisplay->state = STANDBY;
                 break;
             
@@ -90,8 +108,8 @@ void leddisplay_process()
                         leddisplay_draw_motif(HEARTDEATH_FRAMES, HEARTDEATH_LEN);
                     break;
 
-                    case DOTBOUNCE:
-                        leddisplay_draw_motif(DOTBOUNCE_FRAMES, DOTBOUNCE_LEN);
+                    case SPINNER:
+                        leddisplay_draw_motif(SPINNER_FRAMES, SPINNER_LEN);
                     break;
 
                     default:
@@ -99,9 +117,8 @@ void leddisplay_process()
                 }
                 break;
 
-            case TEXT:
-                leddisplay->matrix->drawText();
-                leddisplay->matrix->commit();
+            case DAY_COUNT:
+                leddisplay->matrix->shiftTask();
                 leddisplay->frame_time = millis();
                 break;
 
@@ -112,14 +129,19 @@ void leddisplay_process()
     }
 }
 
+__attribute__((weak)) void leddisplay_motif_once_finish_cb()
+{
+    // To implemented by user somewhere in the application code
+}
+
+
 /* private functions */
 void leddisplay_draw_motif(const frame_t motif_frames[], const uint8_t nb_frames)
 {
     for (uint8_t i = 0; i < 8; i++)
     {
-        leddisplay->matrix->setColumn(i,motif_frames[leddisplay->frame_id][i]);
+        leddisplay->matrix->setRow(0,i,motif_frames[leddisplay->frame_id][i]);
     }
-    leddisplay->matrix->commit();
     leddisplay->frame_time = millis();
 
     if (leddisplay->frame_id < (nb_frames - 1))
@@ -128,6 +150,10 @@ void leddisplay_draw_motif(const frame_t motif_frames[], const uint8_t nb_frames
     }
     else
     {
+        if (leddisplay->loop == false)
+        {
+            leddisplay_motif_once_finish_cb();
+        }
         leddisplay->frame_id = 0;
     }
 }
