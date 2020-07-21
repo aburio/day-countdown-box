@@ -10,7 +10,7 @@
 #include "leddisplay/leddisplay.h"
 #include "wifi/wifi.h"
 
-#define MYTZ TZ_Europe_Paris
+#define TZ TZ_Europe_Paris
 
 /* local types & variables */
 enum AppStates
@@ -35,7 +35,7 @@ void app_time_updated();
 /* public functions */
 void app_init()
 {
-  configTime(MYTZ, "pool.ntp.org");
+  configTime(TZ, "pool.ntp.org");
   state = WAITING_WIFI;
 }
 
@@ -48,7 +48,7 @@ void app_process()
     }
     if (state == DISPLAY_DAYCOUNT)
     {
-      time_t date_wday = 1622905200;
+      time_t date_wday = 1622898000;
       time_t number;
       uint8_t digit = 0;
       bool sign = true;

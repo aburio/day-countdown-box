@@ -57,11 +57,11 @@ void leddisplay_set_day_count(uint32_t day_count, uint8_t nb_digit, bool sign, b
 
     if (sign == true)
     {
-        strcpy(message, "J+");
+        strcpy(message, " J+");
     }
     else
     {
-        strcpy(message, "J-");   
+        strcpy(message, " J-");   
     }
     
     strcat(message, String(day_count).c_str());
