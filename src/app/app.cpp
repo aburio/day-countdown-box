@@ -1,5 +1,4 @@
 #include "app.h"
-#include "data.h"
 
 #include <TZ.h>
 #include <coredecls.h>
@@ -9,8 +8,6 @@
 #include "button/button.h"
 #include "leddisplay/leddisplay.h"
 #include "wifi/wifi.h"
-
-#define TZ TZ_Europe_Paris
 
 /* local types & variables */
 enum AppStates
@@ -35,7 +32,7 @@ void app_time_updated();
 /* public functions */
 void app_init()
 {
-  configTime(TZ, "pool.ntp.org");
+  configTime(DDAY_TIMEZONE, "pool.ntp.org");
   state = WAITING_WIFI;
 }
 
@@ -48,21 +45,21 @@ void app_process()
     }
     if (state == DISPLAY_DAYCOUNT)
     {
-      time_t date_wday = 1622898000;
+      time_t dday = DDAY_UNIX;
       time_t number;
       uint8_t digit = 0;
       bool sign = true;
 
       now = time(nullptr);
 
-      if(date_wday > now)
+      if(dday > now)
       {
         sign = false;
-        now = (date_wday - now) / 86400;
+        now = (dday - now) / 86400;
       }
       else
       {
-        now = (now - date_wday) / 86400;
+        now = (now - dday) / 86400;
       }
 
       number = now;
@@ -78,7 +75,7 @@ void app_process()
     else if (state == LAUNCHING_OTA)
     {
       leddisplay_set_motif(HEARTRATE);
-      wifi_enable_ota_update(180000);
+      wifi_enable_ota_update(OTA_TIMEOUT);
       state = WAITING_OTA;
     }
 }
