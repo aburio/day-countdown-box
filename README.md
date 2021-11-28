@@ -34,4 +34,4 @@ replace `xxx` with your Wifi SSID and `yyy` with your Wifi password
 
 ## Note
 
-In the commit history personal Wifi information (SSID and password) have been exposed. Those information have been depreciate by updating network router settings ;)
+This repository was initially private. In the commit history personal Wifi information (SSID and password) have been exposed. Those information have been depreciate by updating network router settings :)
